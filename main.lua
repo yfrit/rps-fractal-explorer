@@ -38,6 +38,7 @@ function love.load()
 end
 
 function love.update(dt)
+	fractal:update(dt)
 end
 
 function love.draw()

@@ -4,6 +4,7 @@ local Fractal =
     Class.new(
     {
         outlines = true,
+        minOutlineSize = 5,
         colors = {
             [1] = {255, 0, 0},
             [2] = {0, 0, 255},
@@ -34,6 +35,12 @@ function Fractal:setSquare(coordinates, value)
     )
 end
 
+function Fractal:update(dt)
+    -- get mouse position
+    local mouseX, mouseY = love.mouse.getPosition()
+    print(mouseX, mouseY)
+end
+
 function Fractal:draw()
     for _, square in ipairs(self.squares) do
         if square.width >= 1 and square.height >= 1 then
@@ -44,7 +51,7 @@ function Fractal:draw()
 
     if self.outlines then
         for _, square in ipairs(self.squares) do
-            if square.width >= 2 and square.height >= 2 then
+            if square.width >= self.minOutlineSize and square.height >= self.minOutlineSize then
                 love.graphics.setColor(255, 255, 255)
                 love.graphics.rectangle("line", square.x, square.y, square.width, square.height)
             end
