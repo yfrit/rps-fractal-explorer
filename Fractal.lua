@@ -38,7 +38,7 @@ end
 function Fractal:update(dt)
     -- get mouse position
     local mouseX, mouseY = love.mouse.getPosition()
-    print(mouseX, mouseY)
+    -- print(mouseX, mouseY)
 end
 
 function Fractal:draw()

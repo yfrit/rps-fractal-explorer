@@ -1,6 +1,6 @@
 local Class = require("YfritLib.Class")
 
-local ResourceRoyale =
+local Genken =
     Class.new(
     {
         logs = false
@@ -10,12 +10,12 @@ local ResourceRoyale =
     end
 )
 
-function ResourceRoyale:simulate(params)
+function Genken:simulate(params)
     -- self:simulateRecursive(params.maxTurns, {}, {}, 0, 0, 0, 0)
     self:exploreNextPlays(params.maxTurns - 1, {}, {}, 0, 0, 0, 0)
 end
 
-function ResourceRoyale:simulateRecursive(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
+function Genken:simulateRecursive(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
     -- simulate last plays
     local lastPlayer1Play = plays1[#plays1]
     local lastPlayer2Play = plays2[#plays2]
@@ -87,7 +87,7 @@ function ResourceRoyale:simulateRecursive(remainingTurns, plays1, plays2, points
     self:exploreNextPlays(remainingTurns - 1, plays1, plays2, points1, points2, generators1, generators2)
 end
 
-function ResourceRoyale:exploreNextPlays(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
+function Genken:exploreNextPlays(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
     for nextPlayer1Play = 0, 2 do
         plays1[#plays1 + 1] = nextPlayer1Play
 
@@ -103,7 +103,7 @@ function ResourceRoyale:exploreNextPlays(remainingTurns, plays1, plays2, points1
     end
 end
 
-function ResourceRoyale:printPlays(player, plays)
+function Genken:printPlays(player, plays)
     io.write("Player " .. player .. " plays: ")
     for _, play in ipairs(plays) do
         if play == 0 then
@@ -117,7 +117,7 @@ function ResourceRoyale:printPlays(player, plays)
     print()
 end
 
-function ResourceRoyale:printState(winner, plays1, plays2, points1, points2, generators1, generators2)
+function Genken:printState(winner, plays1, plays2, points1, points2, generators1, generators2)
     if not self.logs then
         return
     end
@@ -141,4 +141,4 @@ function ResourceRoyale:printState(winner, plays1, plays2, points1, points2, gen
     print()
 end
 
-return ResourceRoyale
+return Genken

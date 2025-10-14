@@ -1,6 +1,6 @@
 local Fractal = require("Fractal")
 local RockPaperScissors = require("RockPaperScissors")
-local ResourceRoyale = require("ResourceRoyale")
+local Genken = require("Genken")
 
 local fractal, game
 
@@ -25,14 +25,14 @@ function love.load()
 	-- 	}
 	-- )
 	game =
-		ResourceRoyale:new(
+		Genken:new(
 		{
 			fractal = fractal
 		}
 	)
 	game:simulate(
 		{
-			maxTurns = 5
+			maxTurns = 6
 		}
 	)
 end
