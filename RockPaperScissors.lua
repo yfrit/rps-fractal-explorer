@@ -1,4 +1,5 @@
 local Class = require("YfritLib.Class")
+local Table = require("YfritLib.Table")
 
 local RockPaperScissors =
     Class.new(
@@ -19,7 +20,14 @@ function RockPaperScissors:simulateRecursive(remainingTurns, player1Plays, playe
 
     if remainingTurns == 0 then
         -- a "draw" (kinda, because we reached max depth)
-        self.fractal:setSquare({player1Plays, player2Plays}, 3)
+        self.fractal:setSquare(
+            {player1Plays, player2Plays},
+            3,
+            {
+                player1Plays = Table.shallowCopy(player1Plays),
+                player2Plays = Table.shallowCopy(player2Plays)
+            }
+        )
         return
     end
 
@@ -41,7 +49,14 @@ function RockPaperScissors:checkCurrentState(player1Plays, player2Plays)
             winner = lastPlayer2Play == 0 and 2 or 1
         end
 
-        self.fractal:setSquare({player1Plays, player2Plays}, winner)
+        self.fractal:setSquare(
+            {player1Plays, player2Plays},
+            winner,
+            {
+                player1Plays = Table.shallowCopy(player1Plays),
+                player2Plays = Table.shallowCopy(player2Plays)
+            }
+        )
 
         return true
     end

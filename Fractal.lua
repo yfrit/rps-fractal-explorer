@@ -9,6 +9,11 @@ local Fractal =
             [1] = {255, 0, 0},
             [2] = {0, 0, 255},
             [3] = {0, 0, 0}
+        },
+        emojis = {
+            [0] = "R", -- rock
+            [1] = "P", -- paper
+            [2] = "S" -- scissors
         }
     },
     function(self, params)
@@ -17,10 +22,11 @@ local Fractal =
         self.xSize = params.xSize
         self.ySize = params.ySize
         self.squares = {}
+        self.hoveredSquare = nil
     end
 )
 
-function Fractal:setSquare(coordinates, value)
+function Fractal:setSquare(coordinates, value, metadata)
     local x, width = self:calculatePositionAndSize(coordinates[1], self.screenWidth, self.xSize)
     local y, height = self:calculatePositionAndSize(coordinates[2], self.screenHeight, self.ySize)
     table.insert(
@@ -30,7 +36,9 @@ function Fractal:setSquare(coordinates, value)
             y = y,
             width = width,
             height = height,
-            color = self.colors[value]
+            color = self.colors[value],
+            metadata = metadata,
+            value = value
         }
     )
 end
@@ -38,7 +46,15 @@ end
 function Fractal:update(dt)
     -- get mouse position
     local mouseX, mouseY = love.mouse.getPosition()
-    -- print(mouseX, mouseY)
+
+    -- check if it's inside any square (iterate backwards)
+    self.hoveredSquare = nil
+    for i = #self.squares, 1, -1 do
+        local square = self.squares[i]
+        if mouseX >= square.x and mouseX <= square.x + square.width and mouseY >= square.y and mouseY <= square.y + square.height then
+            self.hoveredSquare = square
+        end
+    end
 end
 
 function Fractal:draw()
@@ -57,6 +73,33 @@ function Fractal:draw()
             end
         end
     end
+
+    if self.hoveredSquare then
+        -- show tooltip
+        local mouseX, mouseY = love.mouse.getPosition()
+        love.graphics.setColor(0, 0, 0, 200)
+        love.graphics.rectangle("fill", mouseX, mouseY, 100, 40)
+
+        love.graphics.setColor(255, 255, 255)
+        local player1Text = string.format("1: %s", self:formatPlays(self.hoveredSquare.metadata.player1Plays))
+        local player2Text = string.format("2: %s", self:formatPlays(self.hoveredSquare.metadata.player2Plays))
+        if self.hoveredSquare.value == 1 then
+            player1Text = "(W) " .. player1Text
+        elseif self.hoveredSquare.value == 2 then
+            player2Text = "(W) " .. player2Text
+        end
+
+        local text = player1Text .. "\n" .. player2Text
+        love.graphics.printf(text, mouseX - 5, mouseY + 5, 100, "right")
+    end
+end
+
+function Fractal:formatPlays(plays)
+    local formattedPlays = {}
+    for _, play in ipairs(plays) do
+        table.insert(formattedPlays, self.emojis[play])
+    end
+    return table.concat(formattedPlays, "")
 end
 
 function Fractal:calculatePositionAndSize(coordinate, screenSize, internalSize)

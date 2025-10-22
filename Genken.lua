@@ -1,4 +1,5 @@
 local Class = require("YfritLib.Class")
+local Table = require("YfritLib.Table")
 
 local Genken =
     Class.new(
@@ -69,17 +70,17 @@ function Genken:simulateRecursive(remainingTurns, plays1, plays2, points1, point
 
     -- if one player has 10+ points, they win
     if points1 >= 10 then
-        self.fractal:setSquare({plays1, plays2}, 1)
+        self.fractal:setSquare({plays1, plays2}, 1, self:getMetadata(plays1, plays2))
         self:printState(1, plays1, plays2, points1, points2, generators1, generators2)
         return
     elseif points2 >= 10 then
-        self.fractal:setSquare({plays1, plays2}, 2)
+        self.fractal:setSquare({plays1, plays2}, 2, self:getMetadata(plays1, plays2))
         self:printState(2, plays1, plays2, points1, points2, generators1, generators2)
         return
     end
 
     if remainingTurns == 0 then
-        self.fractal:setSquare({plays1, plays2}, 3)
+        self.fractal:setSquare({plays1, plays2}, 3, self:getMetadata(plays1, plays2))
         self:printState(3, plays1, plays2, points1, points2, generators1, generators2)
         return
     end
@@ -101,6 +102,13 @@ function Genken:exploreNextPlays(remainingTurns, plays1, plays2, points1, points
 
         table.remove(plays1, #plays1)
     end
+end
+
+function Genken:getMetadata(plays1, plays2)
+    return {
+        player1Plays = Table.shallowCopy(plays1),
+        player2Plays = Table.shallowCopy(plays2)
+    }
 end
 
 function Genken:printPlays(player, plays)
