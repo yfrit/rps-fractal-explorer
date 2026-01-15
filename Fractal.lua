@@ -47,10 +47,9 @@ function Fractal:update(dt)
     -- get mouse position
     local mouseX, mouseY = love.mouse.getPosition()
 
-    -- check if it's inside any square (iterate backwards)
+    -- check if it's inside any square
     self.hoveredSquare = nil
-    for i = #self.squares, 1, -1 do
-        local square = self.squares[i]
+    for square in self:iterateSquares() do
         if mouseX >= square.x and mouseX <= square.x + square.width and mouseY >= square.y and mouseY <= square.y + square.height then
             self.hoveredSquare = square
         end
@@ -58,15 +57,13 @@ function Fractal:update(dt)
 end
 
 function Fractal:draw()
-    for _, square in ipairs(self.squares) do
+    for square in self:iterateSquares() do
         if square.width >= 1 and square.height >= 1 then
             love.graphics.setColor(square.color)
             love.graphics.rectangle("fill", square.x, square.y, square.width, square.height)
         end
-    end
 
-    if self.outlines then
-        for _, square in ipairs(self.squares) do
+        if self.outlines then
             if square.width >= self.minOutlineSize and square.height >= self.minOutlineSize then
                 love.graphics.setColor(255, 255, 255)
                 love.graphics.rectangle("line", square.x, square.y, square.width, square.height)
@@ -113,6 +110,23 @@ function Fractal:calculatePositionAndSize(coordinate, screenSize, internalSize)
     end
 
     return position, size
+end
+
+function Fractal:iterateSquares()
+    local index = 0
+    local squares = self.squares
+    local length = #squares
+    local includeIndirect = love.keyboard.isDown(" ")
+
+    return function()
+        repeat
+            index = index + 1
+        until index > length or includeIndirect or not squares[index].metadata.indirectVictory
+
+        if index <= length then
+            return squares[index]
+        end
+    end
 end
 
 return Fractal

@@ -32,7 +32,7 @@ function love.load()
 	)
 	game:simulate(
 		{
-			maxTurns = 6
+			maxTurns = 4
 		}
 	)
 end

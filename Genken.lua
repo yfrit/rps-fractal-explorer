@@ -72,42 +72,86 @@ function Genken:simulateRecursive(remainingTurns, plays1, plays2, points1, point
     if points1 >= 10 then
         self.fractal:setSquare({plays1, plays2}, 1, self:getMetadata(plays1, plays2))
         self:printState(1, plays1, plays2, points1, points2, generators1, generators2)
-        return
+        return true, 1
     elseif points2 >= 10 then
         self.fractal:setSquare({plays1, plays2}, 2, self:getMetadata(plays1, plays2))
         self:printState(2, plays1, plays2, points1, points2, generators1, generators2)
-        return
+        return true, 2
     end
 
     if remainingTurns == 0 then
         self.fractal:setSquare({plays1, plays2}, 3, self:getMetadata(plays1, plays2))
         self:printState(3, plays1, plays2, points1, points2, generators1, generators2)
-        return
+        return false
     end
 
-    self:exploreNextPlays(remainingTurns - 1, plays1, plays2, points1, points2, generators1, generators2)
+    return self:exploreNextPlays(remainingTurns - 1, plays1, plays2, points1, points2, generators1, generators2)
 end
 
 function Genken:exploreNextPlays(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
+    local results = {}
+
+    -- simulate
     for nextPlayer1Play = 0, 2 do
         plays1[#plays1 + 1] = nextPlayer1Play
+
+        results[nextPlayer1Play] = {}
 
         for nextPlayer2Play = 0, 2 do
             plays2[#plays2 + 1] = nextPlayer2Play
 
-            self:simulateRecursive(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
+            local hasWinner, winner = self:simulateRecursive(remainingTurns, plays1, plays2, points1, points2, generators1, generators2)
+            results[nextPlayer1Play][nextPlayer2Play] = {
+                hasWinner = hasWinner,
+                winner = winner
+            }
 
             table.remove(plays2, #plays2)
         end
 
         table.remove(plays1, #plays1)
     end
+
+    -- if player 1 has a play that wins agains all player 2 possible plays, they win
+    for play1 = 0, 2 do
+        local hasCounter = false
+        for play2 = 0, 2 do
+            local result = results[play1][play2]
+            if not result.hasWinner or result.winner ~= 1 then
+                hasCounter = true
+            end
+        end
+
+        if not hasCounter then
+            self.fractal:setSquare({plays1, plays2}, 1, self:getMetadata(plays1, plays2, true))
+            return true, 1
+        end
+    end
+
+    -- if player 2 has a play that wins agains all player 1 possible plays, they win
+    for play2 = 0, 2 do
+        local hasCounter = false
+        for play1 = 0, 2 do
+            local result = results[play1][play2]
+            if not result.hasWinner or result.winner ~= 2 then
+                hasCounter = true
+            end
+        end
+
+        if not hasCounter then
+            self.fractal:setSquare({plays1, plays2}, 2, self:getMetadata(plays1, plays2, true))
+            return true, 2
+        end
+    end
+
+    return false
 end
 
-function Genken:getMetadata(plays1, plays2)
+function Genken:getMetadata(plays1, plays2, indirectVictory)
     return {
         player1Plays = Table.shallowCopy(plays1),
-        player2Plays = Table.shallowCopy(plays2)
+        player2Plays = Table.shallowCopy(plays2),
+        indirectVictory = indirectVictory or false
     }
 end
 
