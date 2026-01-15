@@ -5,6 +5,9 @@ local Genken = require("Genken")
 local fractal, game
 
 function love.load()
+	print("Hover with mouse to see the plays from each player.")
+	print("Hold Space to show indirect victories/defeats.")
+
 	math.randomseed(os.time())
 	love.graphics.setBackgroundColor(127, 127, 127)
 
@@ -32,7 +35,7 @@ function love.load()
 	)
 	game:simulate(
 		{
-			maxTurns = 4
+			maxTurns = 5
 		}
 	)
 end
