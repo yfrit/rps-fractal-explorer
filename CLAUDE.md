@@ -73,7 +73,7 @@ LÖVE directly.
   Beyond direct wins it also detects **indirect victories** in
   `exploreNextPlays`: if a player has one move that beats *every* opponent
   response in the explored subtree, that node is marked a win with
-  `indirectVictory = true`.
+  `indirectVictory = true`. **See [GENKEN.md](GENKEN.md) for the full rules.**
 
 ## Conventions
 
