@@ -1,2 +1,2 @@
 -- require("FractalExplorer")
-require("DeckBattle")
+require("DeckBattleRunner")
