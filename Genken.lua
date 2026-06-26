@@ -1,5 +1,6 @@
 local Class = require("YfritLib.Class")
 local Table = require("YfritLib.Table")
+local GenkenRules = require("GenkenRules")
 
 local Genken =
     Class.new(
@@ -21,52 +22,9 @@ function Genken:simulateRecursive(remainingTurns, plays1, plays2, points1, point
     local lastPlayer1Play = plays1[#plays1]
     local lastPlayer2Play = plays2[#plays2]
 
-    -- scissors (create generator)
-    if lastPlayer1Play == 2 then
-        generators1 = generators1 + 1
-    end
-    if lastPlayer2Play == 2 then
-        generators2 = generators2 + 1
-    end
-
-    local generatedPoints1 = generators1
-    local generatedPoints2 = generators2
-
-    -- rock (gain 4 points)
-    if lastPlayer1Play == 0 then
-        generatedPoints1 = generatedPoints1 + 4
-    end
-    if lastPlayer2Play == 0 then
-        generatedPoints2 = generatedPoints2 + 4
-    end
-
-    -- paper (gain 1 point, negate 4 points)
-    if lastPlayer1Play == 1 then
-        generatedPoints1 = generatedPoints1 + 1
-        generatedPoints2 = generatedPoints2 - 4
-    end
-    if lastPlayer2Play == 1 then
-        generatedPoints2 = generatedPoints2 + 1
-        generatedPoints1 = generatedPoints1 - 4
-    end
-    generatedPoints2 = math.max(0, generatedPoints2)
-    generatedPoints1 = math.max(0, generatedPoints1)
-
-    -- update points
-    points1 = points1 + generatedPoints1
-    points2 = points2 + generatedPoints2
-
-    -- if neither player scored, both get a point
-    if generatedPoints1 == 0 and generatedPoints2 == 0 then
-        points1 = points1 + 1
-        points2 = points2 + 1
-    end
-
-    -- while both players have 10+ points, decrement both by 10
-    while points1 >= 10 and points2 >= 10 do
-        points1 = points1 - 10
-        points2 = points2 - 10
-    end
+    -- resolve this turn's economy (scoring math lives in the shared GenkenRules)
+    points1, points2, generators1, generators2 =
+        GenkenRules.resolveTurn(lastPlayer1Play, lastPlayer2Play, points1, points2, generators1, generators2)
 
     -- if one player has 10+ points, they win
     if points1 >= 10 then
