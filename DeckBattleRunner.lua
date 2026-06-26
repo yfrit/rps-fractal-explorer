@@ -7,7 +7,11 @@ local deck1 = {0, 0, 0}
 local deck2 = {2, 1}
 local maxTurns = 50
 
-function love.load()
+local function load()
     local battle = DeckBattle:new({maxTurns = maxTurns, logs = true})
     battle:run(deck1, deck2)
 end
+
+return {
+    load = load
+}

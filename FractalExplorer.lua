@@ -4,7 +4,7 @@ local Genken = require("Genken")
 
 local fractal, game
 
-function love.load()
+local function load()
     print("Hover with mouse to see the plays from each player.")
     print("Hold Space to show indirect victories/defeats.")
 
@@ -40,10 +40,16 @@ function love.load()
     )
 end
 
-function love.update(dt)
+local function update(dt)
     fractal:update(dt)
 end
 
-function love.draw()
+local function draw()
     fractal:draw()
 end
+
+return {
+    load = load,
+    update = update,
+    draw = draw
+}
