@@ -3,7 +3,8 @@
 -- without graphics (e.g. the deck runners) simply omit update/draw.
 -- local experience = require("FractalExplorer")
 -- local experience = require("DeckBattleRunner")
-local experience = require("DominantDeckRunner")
+-- local experience = require("DominantDeckRunner")
+local experience = require("GenericDominantDeckRunner")
 
 function love.load()
     experience.load()

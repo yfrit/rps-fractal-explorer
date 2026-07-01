@@ -9,6 +9,11 @@ local GenkenRules = require("GenkenRules")
 --   local battle = DeckBattle:new({ maxTurns = 50, logs = false })
 --   local result = battle:run({0, 0, 0}, {2, 1})
 --   -- result.winner == 1 | 2 | nil (draw), result.turns / points1 / points2
+--
+-- maxTurns may be math.huge for an uncapped match: run short-circuits the only
+-- perpetual matchup -- two *equivalent* decks (identical infinite play
+-- sequences) -- to a draw before simulating, so every other matchup is decided
+-- in finite turns.
 local DeckBattle =
     Class.new(
     {
@@ -41,18 +46,58 @@ local function deckString(deck)
     return table.concat(parts, ", ")
 end
 
+local function gcd(a, b)
+    while b ~= 0 do
+        a, b = b, a % b
+    end
+
+    return a
+end
+
+-- Two cycling decks produce the same infinite play sequence iff they agree over
+-- the first lcm(#deck1, #deck2) turns -- both are periodic with period dividing
+-- that lcm, so matching one full window means matching forever. Such equivalent
+-- decks mirror each other and can only draw; every non-equivalent matchup is
+-- decided in finite turns.
+local function decksAreEquivalent(deck1, deck2)
+    local len1, len2 = #deck1, #deck2
+    local turns = len1 / gcd(len1, len2) * len2
+
+    for turn = 1, turns do
+        if deck1[((turn - 1) % len1) + 1] ~= deck2[((turn - 1) % len2) + 1] then
+            return false
+        end
+    end
+
+    return true
+end
+
 -- Run one match between deck1 and deck2. State is local so a single instance
 -- can be reused across many matchups. Returns a result table:
 --   { winner = 1 | 2 | nil, turns = number, points1 = number, points2 = number }
 -- (winner = nil denotes a draw / turn-limit result).
 function DeckBattle:run(deck1, deck2)
+    -- Equivalent decks mirror each other forever: the one perpetual draw, which
+    -- would loop without end under an uncapped maxTurns. Short-circuit it.
+    if decksAreEquivalent(deck1, deck2) then
+        if self.logs then
+            print("=== Deck Battle (Genken rules) ===")
+            print("Deck 1: " .. deckString(deck1))
+            print("Deck 2: " .. deckString(deck2))
+            print("Equivalent decks -- identical play sequences forever; draw.")
+            print()
+        end
+
+        return {winner = nil, turns = 0, points1 = 0, points2 = 0}
+    end
+
     local points1, points2, generators1, generators2 = 0, 0, 0, 0
 
     if self.logs then
         print("=== Deck Battle (Genken rules) ===")
         print("Deck 1: " .. deckString(deck1))
         print("Deck 2: " .. deckString(deck2))
-        print(string.format("Win at 10 points, max %d turns.", self.maxTurns))
+        print(string.format("Win at 10 points, max %s turns.", tostring(self.maxTurns)))
         print()
     end
 
@@ -108,7 +153,7 @@ function DeckBattle:run(deck1, deck2)
 
     if self.logs then
         print(
-            string.format("Draw -- reached the %d-turn limit (P1 %d, P2 %d).", self.maxTurns, points1, points2)
+            string.format("Draw -- reached the %s-turn limit (P1 %d, P2 %d).", tostring(self.maxTurns), points1, points2)
         )
     end
 
