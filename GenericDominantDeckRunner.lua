@@ -213,12 +213,24 @@ local function load()
         local winner
         while not winner do
             local battled, pruned = 0, 0
-            -- Sweep the whole size (no break): every loss feeds the curse set so
-            -- it is complete before we advance to the next X or size.
-            for candidate in decksOfSize(y) do
-                if isCursed(curseTrie, candidate) then
-                    pruned = pruned + 1
-                else
+
+            -- Build decks prefix-first, descending the curse trie in lockstep.
+            -- For the first pass a deck's plays equal its cards, so a curse of
+            -- length <= depth is a card prefix: on a terminal we cut the whole
+            -- subtree (all 3^(y-depth) completions) at once instead of visiting
+            -- them. `node` tracks the trie node matching the current prefix, or
+            -- nil once the prefix leaves the trie (no card-prefix curse below).
+            -- Sweep everything (no break) so every loss feeds the curse set.
+            local candidate = {}
+            local function sweep(pos, node)
+                if pos > y then
+                    -- Survived card-prefix cutting; still catch looping curses
+                    -- (length > y), which only manifest past the first pass.
+                    if isCursed(curseTrie, candidate) then
+                        pruned = pruned + 1
+                        return
+                    end
+
                     battled = battled + 1
                     local won, lossResult = beatsAll(battle, candidate, opponents)
                     if won then
@@ -228,8 +240,24 @@ local function load()
                     elseif lossResult.winner == 2 then
                         addCurse(curseTrie, playSequence(candidate, lossResult.turns))
                     end
+
+                    return
                 end
+
+                for card = 0, 2 do
+                    candidate[pos] = card
+                    local child = node and node.children[card]
+                    if child and child.terminal then
+                        pruned = pruned + 3 ^ (y - pos)
+                    else
+                        sweep(pos + 1, child)
+                    end
+                end
+
+                candidate[pos] = nil
             end
+
+            sweep(1, curseTrie)
 
             if winner then
                 print(string.format("  size %d: battled %d, pruned %d", y, battled, pruned))
