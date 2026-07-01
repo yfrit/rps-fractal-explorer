@@ -22,6 +22,18 @@ local Table = require("YfritLib.Table")
 --
 -- Matches run with no turn limit: DeckBattle short-circuits the only perpetual
 -- draw (equivalent decks) to a draw, so every other matchup is decided.
+--
+-- CURSED PLAY-SEQUENCES (pruning). When a candidate loses to some opponent O at
+-- turn K, the sequence of plays it emitted over turns 1..K is "cursed": any deck
+-- whose *generated play sequence* opens with that same sequence reproduces those
+-- turns against O and loses identically. Since O stays in every future opponent
+-- set (they only grow) and Y only carries upward, such a deck can never be
+-- dominant -- so we cut it from all future enumeration. The curse is on the play
+-- sequence (deck[((t-1) % #deck) + 1]), NOT the raw card list: the two differ
+-- under looping, and that is exactly what lets us prune looped losers too.
+--
+-- To harvest curses we do NOT stop at the first winner of a size -- we sweep the
+-- whole size, recording every loss, so the curse set is complete before moving on.
 local maxTurns = math.huge
 
 local function moveName(play)
@@ -94,25 +106,96 @@ local function buildOpponents(maxSize)
     return opponents
 end
 
--- True iff candidate (as player 1) wins every matchup. Short-circuits on the
--- first non-win, so most candidates are rejected cheaply.
+-- Cursed play-sequences, stored as a trie keyed by play (0/1/2). A node marked
+-- terminal ends a cursed sequence; any play sequence reaching a terminal is
+-- doomed. root = {children = {...}, terminal = bool}.
+local function newCurseTrie()
+    return {children = {}}
+end
+
+-- Add a cursed play sequence. Stops early if a prefix of seq is already cursed
+-- (the shorter curse already covers everything seq would), keeping the trie
+-- minimal.
+local function addCurse(trie, seq)
+    local node = trie
+    for i = 1, #seq do
+        if node.terminal then
+            return
+        end
+
+        local play = seq[i]
+        local child = node.children[play]
+        if not child then
+            child = {children = {}}
+            node.children[play] = child
+        end
+
+        node = child
+    end
+
+    node.terminal = true
+end
+
+-- True iff the candidate's generated (looping) play sequence begins with some
+-- cursed sequence. Walks one play per turn, descending the trie; stops at the
+-- first terminal (cursed) or when the trie branch runs out (finite depth, so
+-- this always terminates even though the play sequence is infinite).
+local function isCursed(trie, deck)
+    local size = #deck
+    local node = trie
+    local turn = 1
+    while true do
+        local play = deck[((turn - 1) % size) + 1]
+        node = node.children[play]
+        if not node then
+            return false
+        end
+        if node.terminal then
+            return true
+        end
+
+        turn = turn + 1
+    end
+end
+
+-- The plays a deck emits over turns 1..turns (its looping play sequence), as an
+-- independent table safe to keep after the reused candidate buffer moves on.
+local function playSequence(deck, turns)
+    local size = #deck
+    local seq = {}
+    for turn = 1, turns do
+        seq[turn] = deck[((turn - 1) % size) + 1]
+    end
+
+    return seq
+end
+
+-- Runs candidate (as player 1) against every opponent. Returns won, lossResult:
+-- won is true iff it wins them all; otherwise lossResult is the DeckBattle result
+-- of the first opponent it failed to beat (a loss or an equivalent-deck draw).
+-- Short-circuits on that first non-win, so most candidates are rejected cheaply.
 local function beatsAll(battle, candidate, opponents)
     for _, opponent in ipairs(opponents) do
-        if battle:run(candidate, opponent).winner ~= 1 then
-            return false
+        local result = battle:run(candidate, opponent)
+        if result.winner ~= 1 then
+            return false, result
         end
     end
 
-    return true
+    return true, nil
 end
 
 local function load()
     local battle = DeckBattle:new({maxTurns = maxTurns, logs = false})
+    -- Curses accumulate across every X and Y and are never reset: a play sequence
+    -- that loses to an opponent keeps losing to it forever.
+    local curseTrie = newCurseTrie()
 
     print("=== Generic dominant-deck search (Genken rules) ===")
     print("Win at 10 points, no turn limit -- draws happen only between equivalent decks.")
     print("(win = decided, not a draw)")
     print("For each X: find a Y-card deck (Y > X) that beats every deck of size <= X.")
+    print("Cursed play-sequences prune doomed decks; each size is swept in full.")
     print("This runs forever -- force-stop when satisfied.")
     print()
 
@@ -129,17 +212,37 @@ local function load()
 
         local winner
         while not winner do
-            local checked = 0
+            local battled, pruned = 0, 0
+            -- Sweep the whole size (no break): every loss feeds the curse set so
+            -- it is complete before we advance to the next X or size.
             for candidate in decksOfSize(y) do
-                checked = checked + 1
-                if beatsAll(battle, candidate, opponents) then
-                    winner = Table.shallowCopy(candidate)
-                    break
+                if isCursed(curseTrie, candidate) then
+                    pruned = pruned + 1
+                else
+                    battled = battled + 1
+                    local won, lossResult = beatsAll(battle, candidate, opponents)
+                    if won then
+                        if not winner then
+                            winner = Table.shallowCopy(candidate)
+                        end
+                    elseif lossResult.winner == 2 then
+                        addCurse(curseTrie, playSequence(candidate, lossResult.turns))
+                    end
                 end
             end
 
-            if not winner then
-                print(string.format("  no winning deck of size %d (checked %d); trying size %d", y, checked, y + 1))
+            if winner then
+                print(string.format("  size %d: battled %d, pruned %d", y, battled, pruned))
+            else
+                print(
+                    string.format(
+                        "  no winning deck of size %d (battled %d, pruned %d); trying size %d",
+                        y,
+                        battled,
+                        pruned,
+                        y + 1
+                    )
+                )
                 y = y + 1
             end
         end
