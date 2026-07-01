@@ -57,6 +57,17 @@ local function deckString(deck)
     return "{" .. table.concat(parts, ", ") .. "}"
 end
 
+-- Deck counts (pruned subtrees) grow as 3^depth and quickly exceed what "%d"
+-- can print exactly (and overflow to garbage/inf). Show exact integers while
+-- they fit, then fall back to scientific / "inf".
+local function countString(n)
+    if n < 1e15 then
+        return string.format("%d", n)
+    end
+
+    return string.format("%.3g", n)
+end
+
 -- Iterator over all 3^size ordered decks (0 = Rock, 1 = Paper, 2 = Scissors),
 -- enumerated by a base-3 odometer over a single reused table. The table is
 -- mutated in place between yields, so shallowCopy anything you keep.
@@ -211,8 +222,9 @@ local function load()
         print(string.format("--- X = %d: beat all %d decks of size <= %d ---", x, #opponents, x))
 
         local winner
+        local progressShown = false
         while not winner do
-            local battled, pruned = 0, 0
+            local battled, pruned, completed = 0, 0, 0
 
             -- Build decks prefix-first, descending the curse trie in lockstep.
             -- For the first pass a deck's plays equal its cards, so a curse of
@@ -224,6 +236,8 @@ local function load()
             local candidate = {}
             local function sweep(pos, node)
                 if pos > y then
+                    -- A full deck reached the end without a card-prefix cut.
+                    completed = completed + 1
                     -- Survived card-prefix cutting; still catch looping curses
                     -- (length > y), which only manifest past the first pass.
                     if isCursed(curseTrie, candidate) then
@@ -260,17 +274,37 @@ local function load()
             sweep(1, curseTrie)
 
             if winner then
-                print(string.format("  size %d: battled %d, pruned %d", y, battled, pruned))
+                -- Finish the in-place progress line (if any) before the result.
+                if progressShown then
+                    io.write("\n")
+                end
+                print(string.format("  size %d: battled %d, pruned %s", y, battled, countString(pruned)))
+            elseif completed == 0 then
+                -- No deck of this size reached the end uncut: every play sequence
+                -- hits a cursed prefix. Prefix coverage is monotonic, so this holds
+                -- for every larger size too -- no deck can ever beat all decks of
+                -- size <= x, and the hypothesis is false at this rung.
+                if progressShown then
+                    io.write("\n")
+                end
+                print(string.format("  every deck of size %d is cursed -- prefix coverage is total.", y))
+                print()
+                print(string.format("HYPOTHESIS FALSE at X = %d: no deck beats every deck of size <= %d.", x, x))
+                return
             else
-                print(
+                -- Overwrite the previous attempt in place with \r (trailing spaces
+                -- clear any leftovers when a shorter line replaces a longer one).
+                io.write(
                     string.format(
-                        "  no winning deck of size %d (battled %d, pruned %d); trying size %d",
+                        "\r  no winning deck of size %d (battled %d, pruned %s); trying size %d   ",
                         y,
                         battled,
-                        pruned,
+                        countString(pruned),
                         y + 1
                     )
                 )
+                io.flush()
+                progressShown = true
                 y = y + 1
             end
         end
